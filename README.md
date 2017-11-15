@@ -95,12 +95,12 @@ fluentd_ulimits:
 The config values are dynamic based on the YAML provided, under the six top level
 config options. Any of these can be ommitted if not used.
 
-* fluentd_inputs: [{}] # creates <source>
-* fluentd_ouputs: [{}] # creates <match>
-* fluentd_filters: [{}] # creates <filter>
-* fluentd_system: {} # creates <system>
-* fluentd_labels: [{}] # creates <label>
-* fluentd_includes: [""] # creates @include
+* fluentd_inputs: [{}] # creates `<source>`
+* fluentd_ouputs: [{}] # creates `<match>`
+* fluentd_filters: [{}] # creates `<filter>`
+* fluentd_system: {} # creates `<system>`
+* fluentd_labels: [{}] # creates `<label>`
+* fluentd_includes: [""] # creates `@include`
 
 There are some special keys `_pattern`, `_props`, and `_of`
 
