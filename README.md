@@ -90,6 +90,94 @@ fluentd_ulimits:
     value: 65536
 ```
 
+### Config YAML
+
+The config values are dynamic based on the YAML provided, under the six top level
+config options. Any of these can be ommitted if not used.
+
+* fluentd_inputs: [{}] # creates <source>
+* fluentd_ouputs: [{}] # creates <match>
+* fluentd_filters: [{}] # creates <filter>
+* fluentd_system: {} # creates <system>
+* fluentd_labels: [{}] # creates <label>
+* fluentd_includes: [""] # creates @include
+
+There are some special keys `_pattern`, `_props`, and `_of`
+
+* `_pattern` is added to the directive like `<filter [_pattern]>`.
+* `_props` is used if order matters for any directive. 
+* `_of` is used in the labels to specify the directive inside the label.
+* `_ANYTHING` will be ignored.
+* `true`, any value of true will just output the key name.
+
+Any directive that has sub directives can be specified with a map of values 
+for the sub directive. Use the directive for the name.
+
+```yaml
+fluentd_inputs:
+  - type: 'tail'
+    format: 'json'
+    tag: 'my_app'
+    path: '/mnt/my_app/log/production.log'
+    pos_file: '/var/log/td-agent/my_app.log.pos'
+    directive1:                       # Sub directive with a list of maps
+      - d-thing: 1
+        name: 'd1 t'
+      - d-thing: 2
+        name: 'd1 t'
+    directive3:                       # Sub directive with a map of values
+      d3-thing: 1
+      name: 'd3-t'
+  - type: 'other-ordered props'
+    _pattern: '**'
+    _props:                           # Order matters so using props
+      - format: 'json'
+      - tag: 'my_app'
+      - path: '/mnt/my_app/log/production.log'
+      - pos_file: '/var/log/td-agent/my_app.log.pos'
+      - first: 'needs-first'
+      - last: 'needs-last'
+
+fluentd_ouputs:
+  - type: "elasticsearch"
+    port: 32422
+
+fluentd_filters:
+  - _pattern: 'foo.bar'
+    type: parser
+    format: '/^(?<host>[^ ]*) [^ ]* (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^ ]*) +\S*)?" (?<code>[^ ]*) (?<size>[^ ]*)$/'
+    time_format: '%d/%b/%Y:%H:%M:%S %z'
+    key_name: message
+
+  - _pattern: 'foo.bar'
+    type: record_transformer
+    enable_ruby: true
+    record:
+      avg: '${record["total"] / record["count"]}'
+
+fluentd_system:
+  log_level: error
+  without_source: true
+  process_name: fluentd1
+
+fluentd_labels:
+  - name: '@SYSTEM'
+    directives: 
+      - _of: 'filter'
+        _pattern: 'var.log.middleware.**'
+        type: 'grep'
+      - _of: 'match'
+        _pattern: '**'
+        type: 's3'
+        directive4:
+          d4-thing: 1
+          name: 'd4-t'
+
+fluentd_includes:
+  - "./config.d/*.config"
+  - "http://example.com/fluent.conf"
+```
+
 ## Dependencies
 
 None

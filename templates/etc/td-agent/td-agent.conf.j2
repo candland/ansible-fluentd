@@ -1,62 +1,82 @@
+{% macro directive(name, dir, indent='') %}
+{{indent}}<{{name}}{% if dir['_pattern'] is defined %} {{ dir['_pattern'] }}{% endif %}>
+{% if dir['type'] is defined %}
+{{indent}}  @type {{ dir['type'] }}
+{% endif %}
+{%  if dir['_props'] is defined %}
+{%    for prop in dir['_props'] %}
+{{indent}}{{ props(prop, indent) }}
+{%-    endfor %}
+{%  else %}
+{{indent}}{{ props(dir, indent) }}
+{%  endif -%}
+{{indent}}</{{name}}>
+{%- endmacro %}
+
+{% macro key_value(key, value) %}
+{{key}}{% if value is not sameas  True %} {{value}}{% endif %}
+{%- endmacro %}
+
+{% macro sub_directive(key, value, indent='') %}
+  {{indent}}<{{key}}>
+{%       for skey, svalue in value.iteritems() %}
+    {{indent}}{{ key_value(skey, svalue) }}
+{%       endfor %}
+  {{indent}}</{{key}}>
+{%- endmacro %}
+
+{% macro props(p, indent='') %}
+{% for key, value in p.iteritems() %}
+{%   if key != 'type' and key[0] != '_' %}
+{%     if value is mapping %}
+{{       sub_directive(key, value, indent) }}
+{%     elif value is iterable and value is not string %}
+{%       for value2 in value %}
+{{         sub_directive(key, value2, indent) }}
+{%       endfor %}
+{%     else %}
+  {{ key_value(key, value) }}
+{%     endif %}
+{%   endif %}
+{%- endfor %}
+{%- endmacro %}
+
+
+# CONFIG
 {% if fluentd_inputs is defined %}
-{%   for item in fluentd_inputs %}
-<source>
-  @type {{ item['type'] }}
-{% if item['port'] is defined %}
-  port {{ item['port'] }}
-{% endif %}
-{% if item['bind'] is defined %}
-  bind {{ item['bind'] }}
-{% endif %}
-{% if item['tag'] is defined %}
-  tag {{ item['tag'] }}
-{% endif %}
-{% if item['protocol_type'] is defined %}
-  protocol_type {{ item['protocol_type'] }}
-{% endif %}
-{% if item['path'] is defined %}
-  path {{ item['path'] }}
-{% endif %}
-{% if item['pos_file'] is defined %}
-  pos_file {{ item['pos_file'] }}
-{% endif %}
-{% if item['format'] is defined %}
-  format {{ item['format'] }}
-{% endif %}
-</source>
+{%   for input in fluentd_inputs %}
+{{ directive('source', input) }}
 {%   endfor %}
 {% endif %}
 
 {% if fluentd_ouputs is defined %}
-{%   for item in fluentd_ouputs %}
-<match {{ item['match'] }}>
-  @type {{ item['type'] }}
-{%     if item['type']|lower == 'elasticsearch' %}
-{%       if item['logstash_format'] is defined and item['logstash_format'] %}
-  logstash_format true
-{%       endif %}
-  host {{ item['host'] }}
-  port {{ item['port'] }}
-  index_name {{ item['index_name'] }}
-  type_name {{ item['type_name'] }}
-{%     endif %}
-{%     if item['type']|lower == 'rabbitmq' %}
-  host {{ item['host'] }}
-  user {{ item['user'] }}
-  pass {{ item['pass'] }}
-  vhost {{ item['vhost'] }}
-  format {{ item['format'] }}
-  exchange {{ item['exchange'] }}
-  exchange_type {{ item['exchange_type'] }}
-  exchange_durable {{ item['exchange_durable']|lower }}
-{%       if item['routing_key'] is defined %}
-  routing_key {{ item['routing_key'] }}
-{%       endif %}
-  heartbeat {{ item['heartbeat'] }}
-  <format>
-    @type {{ item['format'] }}
-  </format>
-{%     endif %}
-</match>
+{%   for output in fluentd_ouputs %}
+{{ directive('match', output) }}
+{%   endfor %}
+{% endif %}
+
+{% if fluentd_filters is defined %}
+{%   for filter in fluentd_filters %}
+{{ directive('filter', filter) }}
+{%   endfor %}
+{% endif %}
+
+{% if fluentd_system is defined %}
+{{ directive('system', fluentd_system) }}
+{% endif %}
+
+{% if fluentd_labels is defined %}
+{%   for dir in fluentd_labels %}
+<label {{ dir['name'] }}>
+{%     for x in dir['directives'] %}
+{{       directive(x['_of'], x, '  ') }}
+{%     endfor %}
+</label>
+{%   endfor %}
+{% endif %}
+
+{% if fluentd_includes is defined %}
+{%   for include in fluentd_includes %}
+@include {{ include }}
 {%   endfor %}
 {% endif %}
